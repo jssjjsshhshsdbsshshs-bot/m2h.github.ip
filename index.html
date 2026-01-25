@@ -1,203 +1,103 @@
 <!DOCTYPE html>
-<html lang="az">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gartic.io Quick Join</title>
-<style>
-/* --- Bütün bədən --- */
-body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #111;
-    color: #eee;
-    text-align: center;
-}
-
-/* --- Başlıq --- */
-h1 {
-    color: #ff4444;
-    margin-top: 20px;
-    text-shadow: 0 0 6px #ff0000;
-}
-
-/* --- Input və düymələr --- */
-input[type=text] {
-    width: 80%;
-    max-width: 300px;
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 12px;
-    border: 1px solid #444;
-    background: #222;
-    color: #fff;
-    font-size: 16px;
-    text-align: center;
-}
-
-button {
-    margin-top: 10px;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 12px;
-    background: #ff0000;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-button:hover {
-    background: #ff5555;
-}
-
-/* --- Otaq listi --- */
-#rooms {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-    margin: 20px;
-}
-
-/* --- Otaq kartları --- */
-.room {
-    background: #1a1a1a;
-    border-radius: 12px;
-    padding: 12px;
-    width: 180px;
-    box-shadow: 0 0 12px rgba(255,0,0,0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.room:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0 20px rgba(255,0,0,0.8);
-}
-
-.room img {
-    width: 32px;
-    margin: 8px 0;
-}
-
-.room p {
-    margin: 6px 0;
-}
-
-.room a {
-    display: block;
-    margin-top: 6px;
-    padding: 5px;
-    border-radius: 6px;
-    background: #222;
-    color: white;
-    text-decoration: none;
-    font-size: 13px;
-    transition: all 0.2s;
-}
-
-.room a:hover {
-    background: #ff0000;
-}
-#info {
-    margin-top: 10px;
-    color: #aaa;
-    font-size: 14px;
-}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gartic.io bot 2026</title>
+    <style type="text/css">
+        body{background: #111;text-align: center;color: #eee;font-family: sans-serif;}
+        #sr{width: 100px}
+        input,button{font-size: 18px;padding: 10px 14px;border-radius: 6px;text-align: center;border: none;}
+        #grid{display: grid;grid-template-columns: repeat(2, auto);width: 380px;margin: 0 auto;}
+        small{margin-bottom: 4px;font-size: 14px}
+        button{background-color: #B7B78A;}
+        button:active{transform: scale(0.985);}
+        #bb button{width: 380px} 
+        hr{width: 420px;border: none;height: 1px;background-color: #aaa;}
+    </style>
 </head>
-
 <body>
-
-<h1>Gartic.io Quick Join</h1>
-
-<!-- --- Input --- -->
-<input id="roomInput" placeholder="Otaq kodu və ya linki yazın">
-<br>
-<button onclick="joinRoom()">JOIN</button>
-<button onclick="viewerRoom()">VIEWER</button>
-
-<!-- --- Info --- -->
-<div id="info">Yüklənir...</div>
-
-<!-- --- Otaqlar --- -->
-<div id="rooms"></div>
+    <div style="margin-top: 3rem;"></div>
+    <div id="grid">
+        <small>Server (artıq vacib deyil)</small>
+        <small>Otaq kodu</small>
+        <input type="text" id="sr" placeholder="server" value="server" disabled>
+        <input type="text" id="rm" placeholder="7100">
+    </div>
+    <div id="bb" style="margin-top: 0.5rem;">
+        <button id="ab">AB</button>
+        <button onclick="j(document.getElementById('rm').value)" id="bt">JOIN</button>
+    </div>
 
 <script>
-// --- Helper functions ---
-function getCode(value){
-    let v = value.trim();
-    if(!v) return null;
-    if(v.includes("gartic.io")){
-        try{
-            v = v.split("gartic.io/")[1].split("/")[0];
-        }catch{}
-    }
-    return v;
-}
+    let r = [];
+    let p, x;
+    let ws = '';
 
-function joinRoom(){
-    const code = getCode(document.getElementById("roomInput").value);
-    if(!code) return alert("Otaq kodunu daxil edin!");
-    window.open("https://gartic.io/" + code, "_blank");
-}
-
-function viewerRoom(){
-    const code = getCode(document.getElementById("roomInput").value);
-    if(!code) return alert("Otaq kodunu daxil edin!");
-    window.open("https://gartic.io/" + code + "/viewer", "_blank");
-}
-
-// --- Otaq siyahısı ---
-const roomsDiv = document.getElementById("rooms");
-const info = document.getElementById("info");
-const LANG = "23"; // default: Azərbaycanca
-
-async function loadRooms(lang){
-    roomsDiv.innerHTML="";
-    info.innerText="Otaqlar yüklənir...";
-
-    try {
-        // ⚠️ CORS problemi ola bilər, buna görə proxy lazım ola bilər
-        const url = "https://gartic.io/req/list?search=&language[]="+lang;
-        const res = await fetch(url);
-        const data = await res.json();
-        const active = data.filter(x=>x.quant>0);
-
-        if(active.length===0){
-            info.innerText = "Bu dildə otaq yoxdur.";
-            return;
+    function j(b){  // artıq server parametri qəbul etmir
+        if(ws != '' && ws.readyState == 1){
+            ws.close();
         }
 
-        let totalUsers = 0;
+        // 2025–2026 üçün ən çox işləyən variantlar (sırayla yoxla)
+        // ws = new WebSocket(`wss://server.gartic.io/socket.io/?EIO=3&transport=websocket`);
+        ws = new WebSocket(`wss://gartic.io/socket.io/?EIO=3&transport=websocket`);
 
-        for(const room of active){
-            totalUsers += room.quant;
+        // Əgər yuxarıdakı işləmirsə bu sətiri aktiv et (şərh aç):
+        // ws = new WebSocket(`wss://play.gartic.io/socket.io/?EIO=3&transport=websocket`);
 
-            const d = document.createElement("div");
-            d.className="room";
-
-            d.innerHTML = `
-                <h4>${room.id.slice(1)}</h4>
-                <img src="https://gartic.io/static/images/subjects/${room.subject}.svg">
-                <p>${room.quant} / ${room.max}</p>
-                <a target="_blank" href="https://gartic.io/${room.code}">JOIN</a>
-                <a target="_blank" href="https://gartic.io/${room.code}/viewer">VIEWER</a>
-            `;
-
-            roomsDiv.appendChild(d);
+        ws.onopen = () => {
+            // nickdəki görünməz simvolu saxladım, amma bəzən bloklanır — istəsən sil
+            ws.send(`42[3,{"v":20000,"nick":"ST‎\( {Math.floor(Math.random() * 960)}","avatar":0,"sala":" \){b}"}]`);
+            ws.send(`42[46,${Date.now()}]`);  // timestamp daha aktual olsun
         }
 
-        info.innerText = `Otaqlar: ${active.length} | Userlər: ${totalUsers}`;
-    } catch(e){
-        console.error(e);
-        info.innerText = "Xəta: CORS / network problemi.";
-    }
-}
+        ws.onmessage = (m) => {
+            // bəzən binary frame gəlir → slice(2) yerinə daha təhlükəsiz yoxlama
+            let raw = m.data;
+            if (typeof raw !== 'string') return;
 
-// --- Start ---
-loadRooms(LANG);
+            let dataStr = raw.startsWith('42') ? raw.slice(2) : raw;
+            let d;
+            try {
+                d = JSON.parse(dataStr);
+            } catch(e) {
+                return;
+            }
+
+            if(d[0] == 5){
+                p = d[2];
+                r = d[5] || [];
+            }
+
+            if(d[0] == 11){
+                x = d[2];
+
+                if(x == '.all'){
+                    for(let i = 0; i < r.length; i++){
+                        ws.send(`42[45,\( {p},[" \){r[i].id}",true]]`);
+                    }
+                    x = '';
+                }
+                else if(x != ''){
+                    let target = r.find(a => a.nick === x);
+                    if (target) {
+                        ws.send(`42[45,\( {p},[" \){target.id}",true]]`);
+                    }
+                    x = '';
+                }
+            }
+
+            else if(d[0] == 23 && !d[1].nick?.startsWith('ST‎')){
+                ws.send(`42[45,\( {p},[" \){d[1].id}",true]]`);
+            }
+        }
+        
+        // ping intervalı bir az artırdım ki ban riski azalsın
+        setInterval(() => {
+            if (ws.readyState === 1) ws.send(`2`);
+        }, 30000);
+    }
 </script>
-
 </body>
 </html>
