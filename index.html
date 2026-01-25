@@ -3,58 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gartic Auto Kick</title>
+<title>Gartic Room Finder</title>
+
 <style>
-  body { background: #111; color: #eee; font-family: sans-serif; text-align: center; }
-  #iframe-container { width: 100%; height: 90vh; margin-top: 10px; }
-  iframe { width: 100%; height: 100%; border: none; }
-  button { position: fixed; top: 10px; left: 10px; z-index: 99999; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; }
+body{margin:0;background:#111;color:#eee;font-family:sans-serif;text-align:center}
+h2{color:#ff4444}
+select{padding:8px 14px;border-radius:20px;border:1px solid #444;background:#222;color:#fff}
+#rooms{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:15px}
+.room{
+  background:#1a1a1a;border-radius:12px;padding:12px;width:180px;
+  box-shadow:0 0 10px rgba(255,0,0,.4)
+}
+.room img{width:32px}
+.btn{
+  display:block;margin-top:6px;padding:5px;border-radius:6px;
+  background:#222;color:white;text-decoration:none;font-size:13px
+}
+.btn:hover{background:#ff0000}
+#info{margin-top:10px;color:#aaa}
 </style>
 </head>
+
 <body>
 
-<h1>Gartic Auto Kick</h1>
-<button id="toggleBtn" style="background:#2ecc71;color:#fff;">AUTO KICK: ON</button>
+<h2>Gartic Otaqlar</h2>
 
-<div id="iframe-container">
-  <iframe src="https://gartic.io/" id="garticFrame"></iframe>
-</div>
+<select id="lang">
+<option value="23" selected>Azərbaycanca</option>
+<option value="2">English</option>
+<option value="8">Türkçe</option>
+<option value="3">Español</option>
+<option value="4">Français</option>
+<option value="6">Deutsch</option>
+</select>
+
+<div id="info">Yüklənir...</div>
+<div id="rooms"></div>
 
 <script>
-// ==Userscript logic köçürüldü==
-const CFG = {
-  autoKick: true,
-  bans: ['^(?!(Tyger|Snov|Leet|Le37|1337|User1337|Ab|cd|13et)$).*']
-};
+const roomsDiv = document.getElementById("rooms");
+const info = document.getElementById("info");
+const langSel = document.getElementById("lang");
 
-let selfId = null;
-let players = new Map();
+async function loadRooms(lang){
+  roomsDiv.innerHTML="";
+  info.innerText="Yüklənir...";
 
-document.getElementById('toggleBtn').onclick = () => {
-  CFG.autoKick = !CFG.autoKick;
-  const btn = document.getElementById('toggleBtn');
-  btn.innerText = CFG.autoKick ? "AUTO KICK: ON" : "AUTO KICK: OFF";
-  btn.style.background = CFG.autoKick ? "#2ecc71" : "#e74c3c";
-};
+  try{
+    const r = await fetch(`https://gartic.io/req/list?search=&language[]=${lang}`);
+    const data = await r.json();
+    const active = data.filter(x=>x.quant>0);
 
-// Funksiyalar userscriptdən eyni qaydada buraya əlavə oluna bilər
-function hitBan(nick){
-  if(!nick) return false;
-  try {
-    for(const pattern of CFG.bans){
-      if(new RegExp(pattern,'i').test(nick)) return true;
+    if(active.length===0){
+      info.innerText="Bu dildə otaq yoxdur.";
+      return;
     }
-  } catch{}
-  return false;
+
+    let totalUsers = 0;
+
+    for(const room of active){
+      totalUsers += room.quant;
+
+      const d = document.createElement("div");
+      d.className="room";
+
+      d.innerHTML = `
+        <h4>${room.id.slice(1)}</h4>
+        <img src="https://gartic.io/static/images/subjects/${room.subject}.svg">
+        <p>${room.quant} / ${room.max}</p>
+        <a class="btn" target="_blank" href="https://gartic.io/${room.code}">JOIN</a>
+        <a class="btn" target="_blank" href="https://gartic.io/${room.code}/viewer">VIEWER</a>
+      `;
+
+      roomsDiv.appendChild(d);
+    }
+
+    info.innerText = `Otaq: ${active.length} | User: ${totalUsers}`;
+
+  }catch(e){
+    console.error(e);
+    info.innerText="Xəta oldu (network / CORS).";
+  }
 }
 
-function kickPlayer(playerId){
-  console.log("[KICK SIMULATION]", playerId);
-  // İframe içindən WebSocket-ə birbaşa göndərmək mümkün deyil CORS səbəbiylə
-}
-
-// Qeyd: Chat kick funksiyası iframe-in içindən çalışmayacaq, userscript kimi browser context-lə işləməlidir
-console.log("[INFO] Userscript funksionallığı buraya köçürüldü, amma WebSocket iframe içindən işləməz.");
+langSel.onchange = ()=>loadRooms(langSel.value);
+loadRooms("23");
 </script>
 
 </body>
