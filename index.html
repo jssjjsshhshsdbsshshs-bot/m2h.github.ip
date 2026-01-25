@@ -3,140 +3,101 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gartic.io Bot 2026 (Intercept)</title>
-    <style>
-        body { background: #111; text-align: center; color: #eee; font-family: sans-serif; }
-        input, button { font-size: 18px; padding: 10px 14px; border-radius: 6px; text-align: center; border: none; }
-        #grid { display: grid; grid-template-columns: repeat(2, auto); width: 380px; margin: 0 auto; }
-        small { margin-bottom: 4px; font-size: 14px; }
-        button { background-color: #B7B78A; }
-        button:active { transform: scale(0.985); }
-        #bb button { width: 380px; margin: 0.5rem 0; }
-        hr { width: 420px; border: none; height: 1px; background-color: #aaa; }
-        #status { margin: 1rem; font-size: 16px; color: #0f0; }
+    <title>Gartic.io bot 2026</title>
+    <style type="text/css">
+        body{background: #111;text-align: center;color: #eee;font-family: sans-serif;}
+        #sr{width: 100px}
+        input,button{font-size: 18px;padding: 10px 14px;border-radius: 6px;text-align: center;border: none;}
+        #grid{display: grid;grid-template-columns: repeat(2, auto);width: 380px;margin: 0 auto;}
+        small{margin-bottom: 4px;font-size: 14px}
+        button{background-color: #B7B78A;}
+        button:active{transform: scale(0.985);}
+        #bb button{width: 380px} 
+        hr{width: 420px;border: none;height: 1px;background-color: #aaa;}
     </style>
 </head>
 <body>
     <div style="margin-top: 3rem;"></div>
-    <h2>Gartic.io Bot (2026)</h2>
-    <p>Əvvəlcə brauzerdə gartic.io aç və otağa gir, sonra buradan JOIN bas.</p>
-    
     <div id="grid">
-        <small>Otaq kodu (artıq vacib deyil, intercept edir)</small>
-        <input type="text" id="rm" placeholder="7100 və ya boş qoy" value="">
+        <small>Server (artıq vacib deyil)</small>
+        <small>Otaq kodu</small>
+        <input type="text" id="sr" placeholder="server" value="server" disabled>
+        <input type="text" id="rm" placeholder="7100">
     </div>
-    
-    <div id="bb">
-        <button id="bt">JOIN / Activate Bot</button>
-        <div id="status">Status: Gözləyir...</div>
+    <div id="bb" style="margin-top: 0.5rem;">
+        <button id="ab">AB</button>
+        <button onclick="j(document.getElementById('rm').value)" id="bt">JOIN</button>
     </div>
-
-    <hr>
-    <small>Console-da (F12) statusu izlə. Bot işə düşəndə kick üçün ".all" və ya "oyuncuadı" yaz.</small>
 
 <script>
-    let ws = null;
-    let r = [];     // players list
-    let p = null;   // player id (socket id)
-    let x = '';     // command buffer
+    let r = [];
+    let p, x;
+    let ws = '';
 
-    function activateBot() {
-        const statusEl = document.getElementById('status');
-        statusEl.textContent = 'Axtarılır... (F12 → Network → WS sekmesine bax)';
-        statusEl.style.color = '#ff0';
+    function j(b){  // artıq server parametri qəbul etmir
+        if(ws != '' && ws.readyState == 1){
+            ws.close();
+        }
 
-        // Oyunun mövcud WebSocket-ini tapırıq (ən etibarlı yol)
-        const sockets = [];
-        for (let key in window) {
-            if (window[key] instanceof WebSocket && 
-                (window[key].url || '').includes('socket.io') && 
-                window[key].readyState === 1) {  // açıq olmalı
-                sockets.push(window[key]);
+        // 2025–2026 üçün ən çox işləyən variantlar (sırayla yoxla)
+        // ws = new WebSocket(`wss://server.gartic.io/socket.io/?EIO=3&transport=websocket`);
+        ws = new WebSocket(`wss://gartic.io/socket.io/?EIO=4&transport=websocket`);
+
+        // Əgər yuxarıdakı işləmirsə bu sətiri aktiv et (şərh aç):
+        // ws = new WebSocket(`wss://play.gartic.io/socket.io/?EIO=3&transport=websocket`);
+
+        ws.onopen = () => {
+            // nickdəki görünməz simvolu saxladım, amma bəzən bloklanır — istəsən sil
+            ws.send(`42[3,{"v":20000,"nick":"ST‎\( {Math.floor(Math.random() * 960)}","avatar":0,"sala":" \){b}"}]`);
+            ws.send(`42[46,${Date.now()}]`);  // timestamp daha aktual olsun
+        }
+
+        ws.onmessage = (m) => {
+            // bəzən binary frame gəlir → slice(2) yerinə daha təhlükəsiz yoxlama
+            let raw = m.data;
+            if (typeof raw !== 'string') return;
+
+            let dataStr = raw.startsWith('42') ? raw.slice(2) : raw;
+            let d;
+            try {
+                d = JSON.parse(dataStr);
+            } catch(e) {
+                return;
             }
-        }
 
-        if (sockets.length > 0) {
-            ws = sockets[0];  // adətən 1 ədəd olur
-            console.log('Bot WS tapıldı:', ws.url);
-            statusEl.textContent = 'Bot aktiv! WS: ' + ws.url.slice(0, 40) + '...';
-            statusEl.style.color = '#0f0';
+            if(d[0] == 5){
+                p = d[2];
+                r = d[5] || [];
+            }
 
-            // Əlavə loglama üçün override edirik (istəsən sil)
-            const originalSend = ws.send;
-            ws.send = function(data) {
-                console.log('Bot göndərir:', data);
-                originalSend.apply(ws, arguments);
-            };
+            if(d[0] == 11){
+                x = d[2];
 
-            // Mövcud mesajları intercept et (kick logic)
-            const originalAddEventListener = ws.addEventListener;
-            ws.addEventListener('message', handleMessage);
-        } else {
-            statusEl.textContent = 'WebSocket tapılmadı! Otaqda olmalısan və oyun açıq olmalı.';
-            statusEl.style.color = '#f00';
-            console.log('Heç bir aktiv socket.io WS tapılmadı. Otağa gir və yenidən cəhd et.');
-        }
-    }
-
-    function handleMessage(m) {
-        let raw = m.data;
-        if (typeof raw !== 'string' || !raw.startsWith('42')) return;
-
-        let dataStr = raw.slice(2);
-        let d;
-        try {
-            d = JSON.parse(dataStr);
-        } catch(e) {
-            return;
-        }
-
-        if (d[0] === 5) {
-            p = d[2];
-            r = d[5] || [];
-            console.log('Players yükləndi:', r.length, 'nəfər');
-        }
-
-        if (d[0] === 11) {
-            x = d[2] ? d[2].trim() : '';
-
-            if (x === '.all') {
-                r.forEach(player => {
-                    if (ws && ws.readyState === 1) {
-                        ws.send(`42[45,\( {p},[" \){player.id}",true]]`);
+                if(x == '.all'){
+                    for(let i = 0; i < r.length; i++){
+                        ws.send(`42[45,\( {p},[" \){r[i].id}",true]]`);
                     }
-                });
-                console.log('.all → hamısı kick edildi');
-                x = '';
-            } else if (x !== '') {
-                const target = r.find(a => a.nick === x || a.nick.includes(x));
-                if (target) {
-                    ws.send(`42[45,\( {p},[" \){target.id}",true]]`);
-                    console.log(`Kick göndərildi: \( {x} ( \){target.id})`);
-                } else {
-                    console.log(`Tapılmadı: ${x}`);
+                    x = '';
                 }
-                x = '';
+                else if(x != ''){
+                    let target = r.find(a => a.nick === x);
+                    if (target) {
+                        ws.send(`42[45,\( {p},[" \){target.id}",true]]`);
+                    }
+                    x = '';
+                }
             }
-        }
 
-        // Yeni oyunçuya avto-kick (ST‎ ilə başlayanlar istisna)
-        if (d[0] === 23 && d[1] && !d[1].nick?.startsWith('ST‎')) {
-            if (ws && ws.readyState === 1) {
+            else if(d[0] == 23 && !d[1].nick?.startsWith('ST‎')){
                 ws.send(`42[45,\( {p},[" \){d[1].id}",true]]`);
-                console.log('Yeni oyunçu avto-kick:', d[1].nick);
             }
         }
+        
+        // ping intervalı bir az artırdım ki ban riski azalsın
+        setInterval(() => {
+            if (ws.readyState === 1) ws.send(`2`);
+        }, 30000);
     }
-
-    // JOIN düyməsi
-    document.getElementById('bt').onclick = activateBot;
-
-    // Ping saxlamaq üçün (əgər lazım olsa)
-    setInterval(() => {
-        if (ws && ws.readyState === 1) {
-            ws.send('2');
-        }
-    }, 25000);
 </script>
 </body>
 </html>
