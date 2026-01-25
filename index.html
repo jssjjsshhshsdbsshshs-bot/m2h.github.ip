@@ -3,95 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gartic Room Finder</title>
-
+<title>Gartic.io Quick Join</title>
 <style>
-body{margin:0;background:#111;color:#eee;font-family:sans-serif;text-align:center}
-h2{color:#ff4444}
-select{padding:8px 14px;border-radius:20px;border:1px solid #444;background:#222;color:#fff}
-#rooms{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:15px}
-.room{
-  background:#1a1a1a;border-radius:12px;padding:12px;width:180px;
-  box-shadow:0 0 10px rgba(255,0,0,.4)
+/* --- Bütün bədən --- */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #111;
+    color: #eee;
+    text-align: center;
 }
-.room img{width:32px}
-.btn{
-  display:block;margin-top:6px;padding:5px;border-radius:6px;
-  background:#222;color:white;text-decoration:none;font-size:13px
+
+/* --- Başlıq --- */
+h1 {
+    color: #ff4444;
+    margin-top: 20px;
+    text-shadow: 0 0 6px #ff0000;
 }
-.btn:hover{background:#ff0000}
-#info{margin-top:10px;color:#aaa}
+
+/* --- Input və düymələr --- */
+input[type=text] {
+    width: 80%;
+    max-width: 300px;
+    padding: 12px;
+    margin-top: 10px;
+    border-radius: 12px;
+    border: 1px solid #444;
+    background: #222;
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+}
+
+button {
+    margin-top: 10px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 12px;
+    background: #ff0000;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+button:hover {
+    background: #ff5555;
+}
+
+/* --- Otaq listi --- */
+#rooms {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin: 20px;
+}
+
+/* --- Otaq kartları --- */
+.room {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 12px;
+    width: 180px;
+    box-shadow: 0 0 12px rgba(255,0,0,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.room:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 20px rgba(255,0,0,0.8);
+}
+
+.room img {
+    width: 32px;
+    margin: 8px 0;
+}
+
+.room p {
+    margin: 6px 0;
+}
+
+.room a {
+    display: block;
+    margin-top: 6px;
+    padding: 5px;
+    border-radius: 6px;
+    background: #222;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.room a:hover {
+    background: #ff0000;
+}
+#info {
+    margin-top: 10px;
+    color: #aaa;
+    font-size: 14px;
+}
 </style>
 </head>
 
 <body>
 
-<h2>Gartic Otaqlar</h2>
+<h1>Gartic.io Quick Join</h1>
 
-<select id="lang">
-<option value="23" selected>Azərbaycanca</option>
-<option value="2">English</option>
-<option value="8">Türkçe</option>
-<option value="3">Español</option>
-<option value="4">Français</option>
-<option value="6">Deutsch</option>
-</select>
+<!-- --- Input --- -->
+<input id="roomInput" placeholder="Otaq kodu və ya linki yazın">
+<br>
+<button onclick="joinRoom()">JOIN</button>
+<button onclick="viewerRoom()">VIEWER</button>
 
+<!-- --- Info --- -->
 <div id="info">Yüklənir...</div>
+
+<!-- --- Otaqlar --- -->
 <div id="rooms"></div>
 
 <script>
-const roomsDiv = document.getElementById("rooms");
-const info = document.getElementById("info");
-const langSel = document.getElementById("lang");
-
-// PUBLIC CORS PROXY
-const PROXY = "https://cors.isomorphic-git.org/";
-
-async function loadRooms(lang){
-  roomsDiv.innerHTML="";
-  info.innerText="Yüklənir...";
-
-  try{
-    const url = PROXY + "https://gartic.io/req/list?search=&language[]=" + lang;
-    const r = await fetch(url);
-    const data = await r.json();
-    const active = data.filter(x=>x.quant>0);
-
-    if(active.length===0){
-      info.innerText="Bu dildə otaq yoxdur.";
-      return;
+// --- Helper functions ---
+function getCode(value){
+    let v = value.trim();
+    if(!v) return null;
+    if(v.includes("gartic.io")){
+        try{
+            v = v.split("gartic.io/")[1].split("/")[0];
+        }catch{}
     }
-
-    let totalUsers = 0;
-
-    for(const room of active){
-      totalUsers += room.quant;
-
-      const d = document.createElement("div");
-      d.className="room";
-
-      d.innerHTML = `
-        <h4>${room.id.slice(1)}</h4>
-        <img src="https://gartic.io/static/images/subjects/${room.subject}.svg">
-        <p>${room.quant} / ${room.max}</p>
-        <a class="btn" target="_blank" href="https://gartic.io/${room.code}">JOIN</a>
-        <a class="btn" target="_blank" href="https://gartic.io/${room.code}/viewer">VIEWER</a>
-      `;
-
-      roomsDiv.appendChild(d);
-    }
-
-    info.innerText = `Otaq: ${active.length} | User: ${totalUsers}`;
-
-  }catch(e){
-    console.error(e);
-    info.innerText="Proxy bloklandı və ya network xəta verdi.";
-  }
+    return v;
 }
 
-langSel.onchange = ()=>loadRooms(langSel.value);
-loadRooms("23");
+function joinRoom(){
+    const code = getCode(document.getElementById("roomInput").value);
+    if(!code) return alert("Otaq kodunu daxil edin!");
+    window.open("https://gartic.io/" + code, "_blank");
+}
+
+function viewerRoom(){
+    const code = getCode(document.getElementById("roomInput").value);
+    if(!code) return alert("Otaq kodunu daxil edin!");
+    window.open("https://gartic.io/" + code + "/viewer", "_blank");
+}
+
+// --- Otaq siyahısı ---
+const roomsDiv = document.getElementById("rooms");
+const info = document.getElementById("info");
+const LANG = "23"; // default: Azərbaycanca
+
+async function loadRooms(lang){
+    roomsDiv.innerHTML="";
+    info.innerText="Otaqlar yüklənir...";
+
+    try {
+        // ⚠️ CORS problemi ola bilər, buna görə proxy lazım ola bilər
+        const url = "https://gartic.io/req/list?search=&language[]="+lang;
+        const res = await fetch(url);
+        const data = await res.json();
+        const active = data.filter(x=>x.quant>0);
+
+        if(active.length===0){
+            info.innerText = "Bu dildə otaq yoxdur.";
+            return;
+        }
+
+        let totalUsers = 0;
+
+        for(const room of active){
+            totalUsers += room.quant;
+
+            const d = document.createElement("div");
+            d.className="room";
+
+            d.innerHTML = `
+                <h4>${room.id.slice(1)}</h4>
+                <img src="https://gartic.io/static/images/subjects/${room.subject}.svg">
+                <p>${room.quant} / ${room.max}</p>
+                <a target="_blank" href="https://gartic.io/${room.code}">JOIN</a>
+                <a target="_blank" href="https://gartic.io/${room.code}/viewer">VIEWER</a>
+            `;
+
+            roomsDiv.appendChild(d);
+        }
+
+        info.innerText = `Otaqlar: ${active.length} | Userlər: ${totalUsers}`;
+    } catch(e){
+        console.error(e);
+        info.innerText = "Xəta: CORS / network problemi.";
+    }
+}
+
+// --- Start ---
+loadRooms(LANG);
 </script>
 
 </body>
