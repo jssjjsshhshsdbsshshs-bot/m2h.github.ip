@@ -1,103 +1,100 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gartic.io bot 2026</title>
-    <style type="text/css">
-        body{background: #111;text-align: center;color: #eee;font-family: sans-serif;}
-        #sr{width: 100px}
-        input,button{font-size: 18px;padding: 10px 14px;border-radius: 6px;text-align: center;border: none;}
-        #grid{display: grid;grid-template-columns: repeat(2, auto);width: 380px;margin: 0 auto;}
-        small{margin-bottom: 4px;font-size: 14px}
-        button{background-color: #B7B78A;}
-        button:active{transform: scale(0.985);}
-        #bb button{width: 380px} 
-        hr{width: 420px;border: none;height: 1px;background-color: #aaa;}
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gartic.io Bot 2026 - WS</title>
+<style>
+body{background:#111;color:#eee;font-family:sans-serif;text-align:center;}
+input,button{font-size:18px;padding:10px 14px;border-radius:6px;border:none;}
+#grid{display:grid;grid-template-columns:repeat(2,auto);width:380px;margin:0 auto;}
+#bb button{width:380px;margin-top:0.5rem;}
+</style>
 </head>
 <body>
-    <div style="margin-top: 3rem;"></div>
-    <div id="grid">
-        <small>Server (artıq vacib deyil)</small>
-        <small>Otaq kodu</small>
-        <input type="text" id="sr" placeholder="server" value="server" disabled>
-        <input type="text" id="rm" placeholder="7100">
-    </div>
-    <div id="bb" style="margin-top: 0.5rem;">
-        <button id="ab">AB</button>
-        <button onclick="j(document.getElementById('rm').value)" id="bt">JOIN</button>
-    </div>
+
+<h2>Gartic.io Bot 2026</h2>
+
+<div id="grid">
+    <small>Otaq kodu</small>
+    <input type="text" id="rm" placeholder="7100">
+</div>
+<div id="bb">
+    <button onclick="joinRoom()">JOIN / Activate Bot</button>
+</div>
 
 <script>
-    let r = [];
-    let p, x;
-    let ws = '';
+let ws = null;
+let selfId = null;
+let players = [];
 
-    function j(b){  // artıq server parametri qəbul etmir
-        if(ws != '' && ws.readyState == 1){
-            ws.close();
+function joinRoom() {
+    const room = document.getElementById('rm').value.trim();
+    if(!room) return alert("Otaq kodunu yaz!");
+
+    // Ən son server URL (2026)
+    const wsUrl = `wss://server0.gartic.io/socket.io/?EIO=3&transport=websocket`;
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+        console.log("[BOT] WS açıldı:", wsUrl);
+        // Otağa qoşulmaq
+        ws.send(`42["3",{"v":20000,"nick":"Bot_${Math.floor(Math.random()*1000)}","avatar":0,"sala":"${room}"}]`);
+        // Ping
+        setInterval(()=>{ if(ws.readyState===1) ws.send('2'); },30000);
+    };
+
+    ws.onmessage = (msg) => {
+        if(typeof msg.data!=="string") return;
+        if(!msg.data.startsWith('42')) return;
+
+        let d;
+        try { d = JSON.parse(msg.data.slice(2)); } catch(e){ return; }
+
+        // Self ID və mövcud oyunçular
+        if(d[0]==5){
+            selfId = d[2];
+            players = d[5] || [];
+            console.log("[PLAYERS]", players.map(p=>p.nick));
         }
 
-        // 2025–2026 üçün ən çox işləyən variantlar (sırayla yoxla)
-        // ws = new WebSocket(`wss://server.gartic.io/socket.io/?EIO=3&transport=websocket`);
-        ws = new WebSocket(`wss://gartic.io/socket.io/?EIO=4&transport=websocket`);
+        // Chat / kick
+        if(d[0]==11){
+            const chat = d[2]?.trim();
+            if(!chat) return;
 
-        // Əgər yuxarıdakı işləmirsə bu sətiri aktiv et (şərh aç):
-        // ws = new WebSocket(`wss://play.gartic.io/socket.io/?EIO=3&transport=websocket`);
-
-        ws.onopen = () => {
-            // nickdəki görünməz simvolu saxladım, amma bəzən bloklanır — istəsən sil
-            ws.send(`42[3,{"v":20000,"nick":"ST‎\( {Math.floor(Math.random() * 960)}","avatar":0,"sala":" \){b}"}]`);
-            ws.send(`42[46,${Date.now()}]`);  // timestamp daha aktual olsun
-        }
-
-        ws.onmessage = (m) => {
-            // bəzən binary frame gəlir → slice(2) yerinə daha təhlükəsiz yoxlama
-            let raw = m.data;
-            if (typeof raw !== 'string') return;
-
-            let dataStr = raw.startsWith('42') ? raw.slice(2) : raw;
-            let d;
-            try {
-                d = JSON.parse(dataStr);
-            } catch(e) {
-                return;
+            // .all → bütün oyunçuları kick
+            if(chat==='.all'){
+                players.forEach(p=>{
+                    ws.send(`42["45",${selfId},["${p.id}",true]]`);
+                });
+                console.log("[ALL KICKED]");
             }
-
-            if(d[0] == 5){
-                p = d[2];
-                r = d[5] || [];
-            }
-
-            if(d[0] == 11){
-                x = d[2];
-
-                if(x == '.all'){
-                    for(let i = 0; i < r.length; i++){
-                        ws.send(`42[45,\( {p},[" \){r[i].id}",true]]`);
-                    }
-                    x = '';
-                }
-                else if(x != ''){
-                    let target = r.find(a => a.nick === x);
-                    if (target) {
-                        ws.send(`42[45,\( {p},[" \){target.id}",true]]`);
-                    }
-                    x = '';
+            else{
+                const target = players.find(p=>p.nick.toLowerCase()===chat.toLowerCase());
+                if(target){
+                    ws.send(`42["45",${selfId},["${target.id}",true]]`);
+                    console.log("[KICKED]", target.nick);
                 }
             }
-
-            else if(d[0] == 23 && !d[1].nick?.startsWith('ST‎')){
-                ws.send(`42[45,\( {p},[" \){d[1].id}",true]]`);
-            }
         }
-        
-        // ping intervalı bir az artırdım ki ban riski azalsın
-        setInterval(() => {
-            if (ws.readyState === 1) ws.send(`2`);
-        }, 30000);
-    }
+
+        // Yeni oyunçu gəldi → avtomatik kick (ST ilə başlayanlar istisna)
+        if(d[0]==23 && d[1] && !d[1].nick?.startsWith('ST')){
+            ws.send(`42["45",${selfId},["${d[1].id}",true]]`);
+            console.log("[AUTO KICK]", d[1].nick);
+        }
+
+        // Yeni oyunçuları map-ə əlavə et
+        if(d[0]==23 && d[1]){
+            if(!players.some(p=>p.id===d[1].id)) players.push(d[1]);
+        }
+    };
+
+    ws.onerror = (e)=>console.error("[WS ERROR]", e);
+    ws.onclose = ()=>console.log("[WS CLOSED]");
+}
 </script>
+
 </body>
 </html>
