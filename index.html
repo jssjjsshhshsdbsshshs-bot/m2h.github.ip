@@ -45,12 +45,16 @@ const roomsDiv = document.getElementById("rooms");
 const info = document.getElementById("info");
 const langSel = document.getElementById("lang");
 
+// PUBLIC CORS PROXY
+const PROXY = "https://cors.isomorphic-git.org/";
+
 async function loadRooms(lang){
   roomsDiv.innerHTML="";
   info.innerText="Yüklənir...";
 
   try{
-    const r = await fetch(`https://gartic.io/req/list?search=&language[]=${lang}`);
+    const url = PROXY + "https://gartic.io/req/list?search=&language[]=" + lang;
+    const r = await fetch(url);
     const data = await r.json();
     const active = data.filter(x=>x.quant>0);
 
@@ -82,7 +86,7 @@ async function loadRooms(lang){
 
   }catch(e){
     console.error(e);
-    info.innerText="Xəta oldu (network / CORS).";
+    info.innerText="Proxy bloklandı və ya network xəta verdi.";
   }
 }
 
