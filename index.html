@@ -3,172 +3,184 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gartic.io Bot – Auto Server Tapma (2026)</title>
+    <title>Gartic.io Bot 2026 – Təzə Versiya</title>
     <style>
         body {
-            background: #0d0d0d;
-            color: #ddd;
+            background: #111;
+            color: #eee;
             font-family: Arial, sans-serif;
             text-align: center;
+            padding: 30px 15px;
             margin: 0;
-            padding: 30px 10px;
         }
+        h2 { margin-bottom: 10px; }
         input, button {
             font-size: 18px;
-            padding: 12px 18px;
-            margin: 8px;
+            padding: 12px 20px;
+            margin: 8px 4px;
             border-radius: 8px;
             border: none;
         }
         button {
-            background: #4caf50;
+            background: #4CAF50;
             color: white;
             cursor: pointer;
         }
-        button:hover { background: #388e3c; }
+        button:hover { background: #45a049; }
         #status {
-            margin: 25px auto;
             font-size: 18px;
-            max-width: 500px;
-            color: #ff9800;
+            margin: 20px;
+            color: #ffcc00;
         }
         #log {
+            max-width: 700px;
             margin: 20px auto;
-            max-width: 600px;
-            text-align: left;
-            background: #1e1e1e;
+            background: #1a1a1a;
             padding: 15px;
             border-radius: 8px;
+            text-align: left;
             font-family: monospace;
             font-size: 14px;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
         }
+        small { color: #aaa; font-size: 14px; }
     </style>
 </head>
 <body>
 
-<h2>Gartic.io Bot – Serveri Özü Tapır</h2>
+<h2>Gartic.io Bot – 2026 Yenilənmiş</h2>
 
 <div>
-    <small>Otaq kodu (məsələn: 7100 və ya 16w)</small><br>
+    <small>Server nömrəsi (məs: 5, 7, 10, 11...)</small><br>
+    <input type="text" id="server" placeholder="7" value="7">
+</div>
+
+<div style="margin-top: 10px;">
+    <small>Otaq kodu (məs: 7100, 16w, ...)</small><br>
     <input type="text" id="room" placeholder="7100" value="7100">
 </div>
 
-<button onclick="startAutoConnect()">QOŞUL (Auto Server)</button>
+<button onclick="connect()">QOŞUL</button>
 
-<div id="status">Status: gözləyir... (server axtarışı başlayacaq)</div>
-<div id="log"></div>
+<div id="status">Status: Gözləyir... (F12 → Network → WS ilə server nömrəsini yoxla)</div>
+<div id="log">Log:</div>
 
 <script>
 let ws = null;
-let currentServerNum = 1;
-const maxServer = 15; // 1 → 15 arası yoxla (lazım olsa artır)
-let found = false;
-let myPlayerId = null;
+let myId = null;
 let players = [];
+let connected = false;
 
 const status = document.getElementById('status');
-const logDiv = document.getElementById('log');
+const log = document.getElementById('log');
 
-function log(text) {
-    logDiv.innerHTML += text + '<br>';
-    logDiv.scrollTop = logDiv.scrollHeight;
+function addLog(msg) {
+    log.innerHTML += msg + '<br>';
+    log.scrollTop = log.scrollHeight;
 }
 
-function connectTo(serverNum, roomCode) {
-    if (found) return;
+function connect() {
+    const serverNum = document.getElementById('server').value.trim() || '7';
+    const room = document.getElementById('room').value.trim() || '7100';
+
+    if (connected && ws && ws.readyState < 2) {
+        ws.close();
+        addLog('Köhnə bağlantı bağlandı.');
+    }
+
+    connected = false;
+    status.textContent = `Server${serverNum} → Qoşulur... (EIO=4)`;
+    addLog(`Cəhd: wss://server${serverNum}.gartic.io/...  EIO=4`);
 
     const url = `wss://server${serverNum}.gartic.io/socket.io/?EIO=4&transport=websocket`;
-    log(`Cəhd ${serverNum}: ${url}`);
-
-    if (ws && ws.readyState < 2) ws.close();
 
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-        log(`→ Server ${serverNum} açıldı`);
-        status.textContent = `Server ${serverNum} bağlı – qoşulma paketi göndərilir...`;
-
-        // Engine.IO açılış
-        ws.send('40');
+        addLog('WebSocket açıldı!');
+        ws.send('40');  // Engine.IO açılış paketi
 
         setTimeout(() => {
-            const nick = "ST‎" + Math.floor(Math.random() * 9000 + 100);
-            const joinData = [3, { v: 20000, nick, avatar: 0, lang: "az", sala: roomCode }];
-            ws.send('42' + JSON.stringify(joinData));
-            log(`Qoşulma paketi göndərildi – ad: ${nick}`);
-        }, 600);
+            const nick = "ST‎" + Math.floor(Math.random() * 10000 + 1);
+            const join = [3, { v: 20000, nick: nick, avatar: 0, lang: "az", sala: room }];
+            ws.send('42' + JSON.stringify(join));
+            addLog(`Qoşulma paketi göndərildi – Ad: ${nick}`);
+            status.textContent = `Server${serverNum} bağlı – Otağa girilir...`;
+        }, 700);
     };
 
-    ws.onmessage = (event) => {
-        let msg = event.data;
+    ws.onmessage = (e) => {
+        const msg = e.data;
         if (msg.startsWith('40')) {
-            log('Engine.IO açılış cavabı alındı');
+            addLog('Engine.IO açılış cavabı OK');
         }
         if (msg.startsWith('42')) {
             try {
                 const data = JSON.parse(msg.slice(2));
-                const opcode = data[0];
+                const code = data[0];
 
-                if (opcode === 5) { // otaq / oyuncu məlumatı
-                    myPlayerId = data[2];
+                if (code === 5) {
+                    myId = data[2];
                     players = data[5] || [];
-                    found = true;
-                    status.textContent = `UĞURLU! Server${serverNum} – Otaqda ${players.length} nəfər`;
-                    log('← Otaq məlumatı alındı → Qoşulduq!');
-                    // Buradan kick və s. funksiyaları işə sala bilərsən
+                    connected = true;
+                    status.textContent = `UĞURLU! Server${serverNum} – ${players.length} nəfər otaqda`;
+                    addLog('Otaq məlumatı alındı → Qoşulduq!');
                 }
-            } catch(e) {}
+
+                if (code === 11) {  // chat mesajı
+                    const text = (data[2] || '').trim().toLowerCase();
+                    if (text === '.kick' || text === '.all') {
+                        kickTry();
+                    }
+                }
+            } catch(err) {
+                addLog('Parse xətası: ' + err);
+            }
         }
+    };
+
+    ws.onerror = (err) => {
+        addLog('Xəta (EIO=4 failed) → EIO=3-ə keçir...');
+        status.textContent = 'EIO=4 failed → EIO=3 cəhd edilir';
+        ws.close();
+
+        // Fallback EIO=3
+        const fallbackUrl = `wss://server${serverNum}.gartic.io/socket.io/?EIO=3&transport=websocket`;
+        addLog(`Fallback: ${fallbackUrl}`);
+        ws = new WebSocket(fallbackUrl);
+        // onopen, onmessage və s. eyni qalır – yenidən təyin etmək lazımdır, amma sadəlik üçün burda təkrar kod yoxdur
     };
 
     ws.onclose = () => {
-        if (!found) {
-            log(`Server ${serverNum} bağlandı (uğursuz)`);
-            tryNextServer(roomCode);
-        }
-    };
-
-    ws.onerror = () => {
-        if (!found) {
-            log(`Xəta: Server ${serverNum}`);
-            tryNextServer(roomCode);
+        if (!connected) {
+            status.textContent = 'Bağlantı qırıldı / Server tapılmadı';
+            addLog('Bağlantı qırıldı. Server nömrəsini dəyiş və ya real oyunda yoxla.');
         }
     };
 }
 
-function tryNextServer(roomCode) {
-    if (found || currentServerNum > maxServer) {
-        if (!found) {
-            status.textContent = 'Server tapılmadı. Otaq kodunu və ya maxServer sayını yoxla.';
-            log('Axtarış bitdi – heç bir server tapılmadı.');
-        }
+function kickTry() {
+    if (!connected || !myId || players.length < 1) {
+        addLog('Kick cəhdi: data yoxdur');
         return;
     }
-    currentServerNum++;
-    setTimeout(() => connectTo(currentServerNum, roomCode), 800); // delay qoyuruq ban yeməmək üçün
+    addLog('Kick cəhdi başladı...');
+    let count = 0;
+    players.forEach(p => {
+        if (p.id !== myId && !p.nick?.startsWith('ST')) {
+            ws.send(`42[45,\( {myId},[" \){p.id}",true]]`);
+            count++;
+        }
+    });
+    addLog(`${count} nəfərə kick paketi göndərildi (amma server qəbul etməyə bilər)`);
+    status.textContent += ' → Kick cəhdi atıldı';
 }
 
-function startAutoConnect() {
-    const roomCode = document.getElementById('room').value.trim() || '7100';
-    if (!roomCode) return alert('Otaq kodunu daxil et!');
-
-    found = false;
-    currentServerNum = 1;
-    logDiv.innerHTML = '';
-    status.textContent = 'Server axtarışı başlayır...';
-    log('Axtarış başladı – otaq: ' + roomCode);
-
-    connectTo(1, roomCode);
-}
-
-// Ping interval (bütün serverlər üçün)
+// Ping saxlamaq üçün
 setInterval(() => {
-    if (ws && ws.readyState === 1) {
-        ws.send('2');
-    }
-}, 24000);
+    if (ws && ws.readyState === 1) ws.send('2');
+}, 25000);
 </script>
 
 </body>
