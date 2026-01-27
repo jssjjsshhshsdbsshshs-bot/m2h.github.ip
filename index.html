@@ -1,187 +1,95 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gartic.io Bot 2026 – Təzə Versiya</title>
-    <style>
-        body {
-            background: #111;
-            color: #eee;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 30px 15px;
-            margin: 0;
-        }
-        h2 { margin-bottom: 10px; }
-        input, button {
-            font-size: 18px;
-            padding: 12px 20px;
-            margin: 8px 4px;
-            border-radius: 8px;
-            border: none;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover { background: #45a049; }
-        #status {
-            font-size: 18px;
-            margin: 20px;
-            color: #ffcc00;
-        }
-        #log {
-            max-width: 700px;
-            margin: 20px auto;
-            background: #1a1a1a;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: left;
-            font-family: monospace;
-            font-size: 14px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        small { color: #aaa; font-size: 14px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gartic Rooms Viewer</title>
+
+<style>
+body{margin:0;background:#000;color:#eee;font-family:Arial}
+.overlay{padding:15px;text-align:center}
+h2{color:#ff3c3c;text-shadow:0 0 8px red}
+select{padding:6px 12px;border-radius:20px;background:#222;color:#fff;border:1px solid #444}
+.flex{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:15px}
+.card{background:#111;padding:12px;border-radius:12px;min-width:180px;box-shadow:0 0 10px rgba(255,0,0,.4)}
+.card img{width:32px}
+.viewer{display:block;margin:6px auto 0;padding:4px 0;width:80px;border-radius:6px;background:#222;color:#fff;text-decoration:none}
+.viewer:hover{background:red}
+</style>
 </head>
+
 <body>
+<div class="overlay">
+<h2>Gartic.io Rooms</h2>
 
-<h2>Gartic.io Bot – 2026 Yenilənmiş</h2>
+<select id="lang">
+<option value="23">Azərbaycanca</option>
+<option value="2">English</option>
+<option value="8">Türkçe</option>
+<option value="7">Русский</option>
+<option value="1">Português</option>
+<option value="3">Español</option>
+</select>
 
-<div>
-    <small>Server nömrəsi (məs: 5, 7, 10, 11...)</small><br>
-    <input type="text" id="server" placeholder="7" value="7">
+<div id="rooms" class="flex"></div>
+<p id="status"></p>
 </div>
-
-<div style="margin-top: 10px;">
-    <small>Otaq kodu (məs: 7100, 16w, ...)</small><br>
-    <input type="text" id="room" placeholder="7100" value="7100">
-</div>
-
-<button onclick="connect()">QOŞUL</button>
-
-<div id="status">Status: Gözləyir... (F12 → Network → WS ilə server nömrəsini yoxla)</div>
-<div id="log">Log:</div>
 
 <script>
-let ws = null;
-let myId = null;
-let players = [];
-let connected = false;
+const roomsDiv = document.getElementById("rooms");
+const statusP = document.getElementById("status");
 
-const status = document.getElementById('status');
-const log = document.getElementById('log');
+const proxies = [
+  "https://cors.isomorphic-git.org/",
+  "https://thingproxy.freeboard.io/fetch/",
+  "https://api.allorigins.win/raw?url=",
+];
 
-function addLog(msg) {
-    log.innerHTML += msg + '<br>';
-    log.scrollTop = log.scrollHeight;
+async function fetchWithProxy(url){
+  for(const p of proxies){
+    try{
+      const r = await fetch(p + url, {cache:"no-store"});
+      if(r.ok) return await r.json();
+    }catch(e){}
+  }
+  throw "All proxies failed";
 }
 
-function connect() {
-    const serverNum = document.getElementById('server').value.trim() || '7';
-    const room = document.getElementById('room').value.trim() || '7100';
+async function loadRooms(lang){
+  roomsDiv.innerHTML = "";
+  statusP.textContent = "Yüklənir...";
 
-    if (connected && ws && ws.readyState < 2) {
-        ws.close();
-        addLog('Köhnə bağlantı bağlandı.');
+  try{
+    const url = `https://gartic.io/req/list?search=&language[]=${lang}`;
+    const data = await fetchWithProxy(url);
+
+    const rooms = data.filter(x=>x.quant>0);
+    statusP.textContent = `Tapılan otaqlar: ${rooms.length}`;
+
+    if(!rooms.length){
+      roomsDiv.innerHTML = "<h3>Otaq yoxdur</h3>";
+      return;
     }
 
-    connected = false;
-    status.textContent = `Server${serverNum} → Qoşulur... (EIO=4)`;
-    addLog(`Cəhd: wss://server${serverNum}.gartic.io/...  EIO=4`);
-
-    const url = `wss://server${serverNum}.gartic.io/socket.io/?EIO=4&transport=websocket`;
-
-    ws = new WebSocket(url);
-
-    ws.onopen = () => {
-        addLog('WebSocket açıldı!');
-        ws.send('40');  // Engine.IO açılış paketi
-
-        setTimeout(() => {
-            const nick = "ST‎" + Math.floor(Math.random() * 10000 + 1);
-            const join = [3, { v: 20000, nick: nick, avatar: 0, lang: "az", sala: room }];
-            ws.send('42' + JSON.stringify(join));
-            addLog(`Qoşulma paketi göndərildi – Ad: ${nick}`);
-            status.textContent = `Server${serverNum} bağlı – Otağa girilir...`;
-        }, 700);
-    };
-
-    ws.onmessage = (e) => {
-        const msg = e.data;
-        if (msg.startsWith('40')) {
-            addLog('Engine.IO açılış cavabı OK');
-        }
-        if (msg.startsWith('42')) {
-            try {
-                const data = JSON.parse(msg.slice(2));
-                const code = data[0];
-
-                if (code === 5) {
-                    myId = data[2];
-                    players = data[5] || [];
-                    connected = true;
-                    status.textContent = `UĞURLU! Server${serverNum} – ${players.length} nəfər otaqda`;
-                    addLog('Otaq məlumatı alındı → Qoşulduq!');
-                }
-
-                if (code === 11) {  // chat mesajı
-                    const text = (data[2] || '').trim().toLowerCase();
-                    if (text === '.kick' || text === '.all') {
-                        kickTry();
-                    }
-                }
-            } catch(err) {
-                addLog('Parse xətası: ' + err);
-            }
-        }
-    };
-
-    ws.onerror = (err) => {
-        addLog('Xəta (EIO=4 failed) → EIO=3-ə keçir...');
-        status.textContent = 'EIO=4 failed → EIO=3 cəhd edilir';
-        ws.close();
-
-        // Fallback EIO=3
-        const fallbackUrl = `wss://server${serverNum}.gartic.io/socket.io/?EIO=3&transport=websocket`;
-        addLog(`Fallback: ${fallbackUrl}`);
-        ws = new WebSocket(fallbackUrl);
-        // onopen, onmessage və s. eyni qalır – yenidən təyin etmək lazımdır, amma sadəlik üçün burda təkrar kod yoxdur
-    };
-
-    ws.onclose = () => {
-        if (!connected) {
-            status.textContent = 'Bağlantı qırıldı / Server tapılmadı';
-            addLog('Bağlantı qırıldı. Server nömrəsini dəyiş və ya real oyunda yoxla.');
-        }
-    };
-}
-
-function kickTry() {
-    if (!connected || !myId || players.length < 1) {
-        addLog('Kick cəhdi: data yoxdur');
-        return;
-    }
-    addLog('Kick cəhdi başladı...');
-    let count = 0;
-    players.forEach(p => {
-        if (p.id !== myId && !p.nick?.startsWith('ST')) {
-            ws.send(`42[45,\( {myId},[" \){p.id}",true]]`);
-            count++;
-        }
+    rooms.forEach(r=>{
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerHTML = `
+        <h4>${r.id.slice(1)}</h4>
+        <img src="https://gartic.io/static/images/subjects/${r.subject}.svg">
+        <p>${r.quant}/${r.max} ・ ${r.points}/${r.goal}</p>
+        <a class="viewer" target="_blank" href="https://gartic.io/${r.code}/viewer">Viewer</a>
+      `;
+      roomsDiv.appendChild(d);
     });
-    addLog(`${count} nəfərə kick paketi göndərildi (amma server qəbul etməyə bilər)`);
-    status.textContent += ' → Kick cəhdi atıldı';
+
+  }catch(e){
+    statusP.textContent = "Bütün proxy-lər bloklandı ❌";
+  }
 }
 
-// Ping saxlamaq üçün
-setInterval(() => {
-    if (ws && ws.readyState === 1) ws.send('2');
-}, 25000);
+document.getElementById("lang").onchange = e => loadRooms(e.target.value);
+loadRooms("23");
 </script>
-
 </body>
 </html>
