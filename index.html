@@ -3,118 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gartic.io Otaqlar – WhoWhere V2 (HTML)</title>
+  <title>Gartic.io Otaqlar – WhoWhere V2 (Proxy ilə)</title>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0a0a0a;
-      color: #f0f0f0;
-    }
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: #000;
-      padding: 20px;
-      overflow-y: auto;
-      text-align: center;
-    }
-    h2 {
-      color: #ff3c3c;
-      text-shadow: 0 0 8px #ff3c3c, 0 0 16px #ff0000;
-      margin-bottom: 10px;
-    }
-    select {
-      font-size: 16px;
-      padding: 6px 12px;
-      border-radius: 30px;
-      background: #222;
-      color: white;
-      border: 1px solid #444;
-      margin-bottom: 16px;
-    }
-    .flex {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 1rem;
-    }
-    .flex-child {
-      background: #111;
-      padding: 12px 18px;
-      min-width: 180px;
-      border-radius: 12px;
-      box-shadow: 0 0 12px rgba(255,0,0,0.5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: all 0.25s;
-    }
-    .flex-child:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 0 20px rgba(255,0,0,0.8);
-    }
-    .flex-child img {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 1px solid #666;
-      margin-bottom: 6px;
-    }
-    .users {
-      width: 100%;
-      margin: 8px 0;
-    }
-    .user-info {
-      display: flex;
-      align-items: center;
-      margin-bottom: 6px;
-      justify-content: flex-start;
-      font-size: 13px;
-      color: #ccc;
-    }
-    .user-info img {
-      width: 24px;
-      height: 24px;
-      margin-right: 8px;
-      border-radius: 50%;
-    }
-    .viewer-btn {
-      display: block;
-      width: 80px;
-      margin: 6px auto 12px;
-      padding: 4px 0;
-      border-radius: 6px;
-      background: #222;
-      color: #fff;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 12px;
-      box-shadow: 0 0 6px rgba(255,0,0,0.5);
-      transition: all 0.2s;
-    }
-    .viewer-btn:hover {
-      background: #ff0000;
-      box-shadow: 0 0 12px rgba(255,0,0,0.8);
-    }
-    #total {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: darkslateblue;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 6px;
-      z-index: 10000;
-      font-size: 14px;
-    }
+    body { margin:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0a0a0a; color:#f0f0f0; }
+    .overlay { position:fixed; inset:0; background:#000; padding:20px; overflow-y:auto; text-align:center; }
+    h2 { color:#ff3c3c; text-shadow:0 0 8px #ff3c3c, 0 0 16px #ff0000; margin-bottom:10px; }
+    select { font-size:16px; padding:6px 12px; border-radius:30px; background:#222; color:white; border:1px solid #444; margin-bottom:16px; }
+    .flex { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:1rem; }
+    .flex-child { background:#111; padding:12px 18px; min-width:180px; border-radius:12px; box-shadow:0 0 12px rgba(255,0,0,0.5); display:flex; flex-direction:column; align-items:center; transition:all 0.25s; }
+    .flex-child:hover { transform:translateY(-5px); box-shadow:0 0 20px rgba(255,0,0,0.8); }
+    .flex-child img { width:32px; height:32px; border-radius:50%; border:1px solid #666; margin-bottom:6px; }
+    .users { width:100%; margin:8px 0; }
+    .user-info { display:flex; align-items:center; margin-bottom:6px; font-size:13px; color:#ccc; }
+    .user-info img { width:24px; height:24px; margin-right:8px; border-radius:50%; }
+    .viewer-btn { display:block; width:80px; margin:6px auto 12px; padding:4px 0; border-radius:6px; background:#222; color:#fff; text-decoration:none; font-weight:bold; font-size:12px; box-shadow:0 0 6px rgba(255,0,0,0.5); transition:all 0.2s; }
+    .viewer-btn:hover { background:#ff0000; box-shadow:0 0 12px rgba(255,0,0,0.8); }
+    #total { position:fixed; top:10px; left:10px; background:darkslateblue; color:white; padding:6px 12px; border-radius:6px; z-index:10000; font-size:14px; }
+    #status { color:#ffcc00; font-weight:bold; margin:10px; }
   </style>
 </head>
 <body>
 
 <div class="overlay">
-  <h2>M2H • Gartic.io Otaqlar</h2>
+  <h2>M2H • Gartic.io Otaqlar (Proxy ilə)</h2>
+  <div id="status">Proxy: corsproxy.io istifadə olunur • Yüklənir...</div>
   
   <select id="lg">
     <option value="23" selected>Azərbaycanca</option>
@@ -157,21 +69,57 @@
 const langSelect = document.getElementById('lg');
 const roomsContainer = document.getElementById('rooms');
 const totalDisplay = document.getElementById('total');
+const statusDiv = document.getElementById('status');
+
+const PROXY = 'https://corsproxy.io/?';          // Əsas proxy (2026-da aktiv)
+const BACKUP_PROXY = 'https://api.allorigins.win/raw?url=';  // Yedək
+
+async function fetchWithProxy(url) {
+  try {
+    // Əvvəlcə əsas proxy ilə cəhd et
+    let fullUrl = PROXY + encodeURIComponent(url);
+    let response = await fetch(fullUrl);
+    
+    if (!response.ok) {
+      statusDiv.textContent = 'Əsas proxy xətası → yedək proxy-yə keçir...';
+      // Yedək proxy
+      fullUrl = BACKUP_PROXY + encodeURIComponent(url);
+      response = await fetch(fullUrl);
+    }
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();  // list üçün JSON
+  } catch (err) {
+    throw err;
+  }
+}
+
+async function fetchTextWithProxy(url) {
+  try {
+    let fullUrl = PROXY + encodeURIComponent(url);
+    let response = await fetch(fullUrl);
+    
+    if (!response.ok) {
+      fullUrl = BACKUP_PROXY + encodeURIComponent(url);
+      response = await fetch(fullUrl);
+    }
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.text();
+  } catch (err) {
+    throw err;
+  }
+}
 
 async function loadRooms(lang = '23') {
-  roomsContainer.innerHTML = '<p style="color:#888">Yüklənir...</p>';
+  roomsContainer.innerHTML = '<p style="color:#888">Otaqlar yüklənir (proxy vasitəsilə)...</p>';
   totalDisplay.textContent = 'Yüklənir...';
+  statusDiv.textContent = 'Proxy: corsproxy.io • Yüklənir...';
 
   try {
-    // Əgər CORS xətası alırsınızsa → aşağıdakı sətri aktiv edin:
-    // const proxy = 'https://cors-anywhere.herokuapp.com/';
-    // const url = proxy + `https://gartic.io/req/list?search=&language[]=${lang}`;
+    const listUrl = `https://gartic.io/req/list?search=&language[]=${lang}`;
+    const data = await fetchWithProxy(listUrl);
     
-    const url = `https://gartic.io/req/list?search=&language[]=${lang}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-
-    const data = await r.json();
     const active = data.filter(room => room.quant > 0);
 
     if (active.length === 0) {
@@ -196,13 +144,12 @@ async function loadRooms(lang = '23') {
 
       roomsContainer.appendChild(card);
 
-      // İstifadəçiləri yükləmək
+      // İstifadəçiləri yüklə (serverViewer)
       try {
         const viewerUrl = `https://gartic.io/serverViewer?room=${room.code}`;
-        const rv = await fetch(viewerUrl);
-        const text = await rv.text();
+        const text = await fetchTextWithProxy(viewerUrl);
 
-        const serverNum = text.slice(15,16); // "server0X"
+        const serverNum = text.slice(15,16); // server0X
         const wsUrl = `wss://server0${serverNum}.gartic.io/socket.io/?EIO=3&transport=websocket`;
 
         const ws = new WebSocket(wsUrl);
@@ -226,26 +173,28 @@ async function loadRooms(lang = '23') {
               div.className = 'user-info';
               div.innerHTML = `
                 <img src="${user.foto || 'https://gartic.io/static/images/avatar/svg/0.svg'}" alt="">
-                <span>${user.nick}</span>
+                <span>${user.nick || 'Anonim'}</span>
               `;
               usersDiv.appendChild(div);
             }
           } catch (e) {
-            console.error("WebSocket parse xətası:", e);
+            console.error("WS parse xətası:", e);
           }
         };
 
       } catch (e) {
-        console.warn("ServerViewer xətası:", room.code, e);
+        console.warn("serverViewer xətası:", room.code, e);
       }
     }
 
     const totalPlayers = active.reduce((sum, r) => sum + r.quant, 0);
     totalDisplay.textContent = `Otaq: ${active.length}  |  İstifadəçi: ${totalPlayers}`;
+    statusDiv.textContent = 'Proxy: uğurla işləyir ✓';
 
   } catch (err) {
     console.error(err);
-    roomsContainer.innerHTML = `<h3 style="color:#f55">Xəta: ${err.message}</h3>`;
+    statusDiv.textContent = 'Xəta: ' + err.message + ' (Proxy limitə düşmüş ola bilər)';
+    roomsContainer.innerHTML = `<h3 style="color:#f55">Yükləmə xətası: ${err.message}</h3><p>Başqa proxy sınamaq üçün səhifəni yeniləyin və ya Chrome CORS extension quraşdırın.</p>`;
   }
 }
 
